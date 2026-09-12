@@ -5,10 +5,6 @@ plugins {
 group = "com.codingkinetics"
 version = "unspecified"
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     testImplementation(kotlin("test"))
 }

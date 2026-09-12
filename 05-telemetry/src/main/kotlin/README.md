@@ -43,8 +43,9 @@ Follow the setup and incident triage instructions located directly in the challe
 - **The Paladin** (Platform Architect / Lead): Coordinates triage order, manages communication lines, and confirms root-cause verification before approving rollback or deployment.
 - **The Diviner** (Telemetry Specialist): Reads Grafana dashboard runes, correlates dispatcher queue depth against thread pool exhaustion, and maps the timeline of the spike.
 - **The Chronomancer** (Forensics & Perfetto Specialist): Pulls runtime thread dumps, inspects continuation suspensions, and locates the exact coroutine stuck in an uncooperative, blocking loop.
+- 
 
-### Victory Conditions (Claiming the Sev01 Grimoire)
+### Victory Conditions
 The boss is defeated only when the party moves from speculation to empirical proof:
 
 - [ ] **Telemetry Online:** Prometheus and Grafana instances collecting live Ktor metrics.

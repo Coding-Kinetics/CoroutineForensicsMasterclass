@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2026 Coding Kinetics LLC. All rights reserved.
+ *
+ * COMMERCIAL WORKSHOP LICENSE:
+ * This code is proprietary material developed by Coding Kinetics LLC.
+ * Workshop attendees and purchasing organizations are granted a perpetual,
+ * non-exclusive license to use, adapt, and integrate this utility within
+ * internal projects and systems as they see fit.
+ *
+ * Standalone resale, redistribution, sublicensing, or inclusion in public
+ * educational materials/courses outside of your organization without prior
+ * written permission from Coding Kinetics LLC is strictly prohibited.
+ */
+
 package com.codingkinetics.sev01_toolkit.telemetry.perfetto
 
 import java.io.File
@@ -61,7 +75,7 @@ object Ftrace {
                 it.write("B|$pid|$sectionName\n")
                 it.flush()
             } else {
-                val tid = Thread.currentThread().threadId()
+                val tid = Thread.currentThread().id
                 it.println("""{"name":"$sectionName","ph":"B","ts":${currentTimeMicros()},"pid":$pid,"tid":$tid},""")
                 it.flush()
             }
@@ -74,7 +88,7 @@ object Ftrace {
                 it.write("E\n")
                 it.flush()
             } else {
-                val tid = Thread.currentThread().threadId()
+                val tid = Thread.currentThread().id
                 it.println("""{"ph":"E","ts":${currentTimeMicros()},"pid":$pid,"tid":$tid},""")
                 it.flush()
             }

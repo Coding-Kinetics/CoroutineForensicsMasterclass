@@ -1,4 +1,6 @@
-## Lab: Cooperative Cancellation & Coroutine Job Hierarchy
+## Level 2, Quest 2: Cooperative Cancellation & Coroutine Job Hierarchy
+
+Leaving behind the crude mechanical levers of raw JVM threads, the party steps into the Astral Spire — where Coroutine Weavers bind lightweight fibers of execution to hierarchical parent stones. But as you ascend the spiral steps, a familiar roar shakes the masonry. A Rogue Automaton has broken loose from the central lattice, spinning its arcane turbines at maximum velocity, deaf to every dispelling ward cast its way.
 
 ### The Fallacy of Cancellation
 In pre-coroutine JVM architectures, stopping in-flight work required calling `Thread.interrupt()`. As demonstrated in Level 1, raw thread interruption fails silently if the target thread is executing continuous CPU instructions, iterating in tight loops, or failing to manually query `Thread.currentThread().isInterrupted`.

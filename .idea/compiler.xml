@@ -2,7 +2,6 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="11">
-      <module name="Coroutine-Forensics-Masterclass.04-reading-perf" target="17" />
       <module name="Coroutine-Forensics-Masterclass.app" target="21" />
       <module name="Coroutine-Forensics-Masterclass.case-02-android-stalled-ui" target="17" />
     </bytecodeTargetLevel>

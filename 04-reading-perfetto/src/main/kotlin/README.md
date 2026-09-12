@@ -18,7 +18,6 @@ Leave your sandbox workspaces behind. Clone the main multiplatform battlefield a
 ```Bash
 git clone https://github.com/ahinchman1/ktor-chat.git
 cd ktor-chat
-git checkout challenge/workshop_challenge_4_perfetto_prep
 ```
 
 Open up the project in Android Studio, and take two minutes to inspect the broader realm structure:
@@ -41,14 +40,12 @@ _Your mission: Catch the allocation bloat, frame stalls, and memory leaks lurkin
 ```Bash
 record_android_trace -o /tmp/android_client.pftrace -t 10s -b 64mb am binder_driver dalvik freq idle sched sync view
 ```
-- Inspect GC suspension pauses (`dalvik.vm.gc`), tracked heap allocations, or retained coroutine scopes pinned to dead activities.
-
+- Once your trace loads in [ui.perfetto.dev](https://ui.perfetto.dev) or Android Studio Profiler, answer the following questions in the section below.
 
 #### Deliverable:
 - A `.pftrace` / exported `.json` highlighting a suspicious frame drop or heap growth curve.
 
-#### Flank A: Handheld Forensics (Android Memory & UI Stalls)
-Once your trace loads in [ui.perfetto.dev](https://ui.perfetto.dev) or Android Studio Profiler, answer these:
+
 
 - **Frame Budget Breaches:** Look at the Choreographer#doFrame slice track. Are you seeing slices stretching well past the 16.6ms (60Hz) or 8.3ms (120Hz) mark? What work is active on the Main/UI thread during that elongated frame—is it heavy layout/recomposition or JSON deserialization?
 - **GC Suspension Pressure**: Search the trace slices for dalvik.vm.gc or garbage collector. How often is the runtime calling a "Stop the World" pause? Are allocations climbing in a sawtooth pattern that never returns to baseline after a manual GC trigger?
@@ -72,27 +69,53 @@ perfetto -c core/telemetry/record_config.pbtxt -o /tmp/ktor_backend.pftrace
 traceconv json /tmp/ktor_backend.pftrace /tmp/ktor_backend.json
 ```
 
+#### Ritual Instructions:
+
+**Set up the environment:** 
+
+- Start the Ktor backend: `./gradlew :server:rest:run`
+- Start backing services: `docker compose up -d` (from grafana-setup/)
+- Verify Prometheus is scraping: curl http://localhost:8080/metrics
+- Open Grafana at http://localhost:3000 and navigate to the Ktor & JVM Service Metrics dashboard.
+
+**Burst Traffic Generation**
+- Launch a desktop client or 2: `./gradlew :app:desktop:run`
+- Log in with 2–3 clients (can be same or different users).
+- Join the same room on all clients.
+- Rapidly send messages in the room for ~30–60 seconds (multiple messages per second, across conversational turns).
+
+
 #### Deliverable
 A .json trace showing valid start/finish spans aligned with kernel sched_switch events.
 
-#### Flank B: Kernel & Backend Forensics (Ktor & Scheduler Slices)
-Once you load your Ktor ftrace JSON into the scrying pool, answer these:
-- **The Span Horizon:** Look for your user-space S|... (Start) and F|... (Finish) async cookies. Does the duration of the span match what Ktor logs as execution time, or is there hidden overhead before the request actually resolves?
-- **Dispatcher Hop Delays:** Zoom in between the moment a request starts and when your route handler actually begins executing. Do you see a gap where the thread yields via sched_switch and the continuation sits in a runnable queue waiting for an idle worker thread?
-- **Thread Contention & Stealing:** Expand the CPU cores at the top of the timeline. Is your Ktor server ping-ponging work across different cores unnecessarily, or is a single worker thread pinned at 100% while others sit idle?
-- **Blocking on Non-Blocking:** Look at the thread name running your route's FtraceMarker.begin/end. Is it running on a dedicated Netty/CIO event loop thread (e.g., eventLoopGroup-xxx) or an internal coroutine dispatcher? Did someone slip a blocking database/network call onto a thread that shouldn't block?
+**Once you load your Ktor ftrace JSON into the scrying pool, answer these:**
+1. **Is what you see what you would expect from app behavior?** Look at the visual contrast in the example trace: most operations are tiny, vertical slivers. When you run your workload, do your traces show consistent slice widths, or do you see massive outliers?  Are there threads that suddenly stretch across half the screen? If a slice is unusually wide, what questions should you ask about whether that thread is doing heavy calculation or simply stuck waiting?
+2. **Dispatcher Hop Delays:** Zoom in between the moment a request starts and when your route handler actually begins executing. Do you see a gap where the thread yields via sched_switch and the continuation sits in a runnable queue waiting for an idle worker thread?
+3. **Thread Contention & Stealing:** Expand the CPU cores at the top of the timeline. Is your Ktor server ping-ponging work across different cores unnecessarily, or is a single worker thread pinned at 100% while others sit idle?
+4. **Blocking on Non-Blocking:** Look at the thread names. Are any of your recorded threads running on a dedicated Netty/CIO event loop thread (i.e. `eventLoopGroup-xxx`) or an internal coroutine dispatcher? Did someone slip a blocking database/network call onto a thread that shouldn't block?
 
-### 3. The Grand Council (Communal Scrying)
+### 3. The Grand Council
 Once your flank has captured its trace, do not hoard the scrolls. The exercise concludes with a cross-table debrief:
 
 - **Flank A projects their Android trace:** Where did the allocations spike? Did the UI thread freeze waiting on an unconfined background job?
-- **Flank B projects their Ktor trace:** Where did the request land? Did it stall in a thread switch before writing the response?
+- **Flank B projects their Ktor trace:** Show your perfetto trace and discuss the questions made in the Deliverable section.
 - **The Synthesis:** We map client frame-drops against backend latency spikes to prove causality before entering the Final Boss arena.
-
-
 
 ## Victory Conditions
 
 - [ ] **Flank A Clear:** Android client trace successfully recorded and analyzed for GC churn or retained memory references.
-- [ ] **Flank B Clear:** Ktor backend writes valid asynchronous `ftrace` markers captured via Perfetto daemon.
+- [ ] **Flank B Clear:** Ktor backend writes valid asynchronous `ftrace` markers captured via Perfetto daemon and analyzes what they pick up.
 - [ ] **The Council Convenes:** One champion from Flank A and one from Flank B present their graphs to the room for joint dissection to present their findings on forensics
+
+## Post-Exercise Challenge
+
+**Merging Both in Perfetto UI**
+Instead of inspecting the app and the server in two different browser tabs, attendees can view the full end-to-end transaction together:
+
+1. In Perfetto UI (`ui.perfetto.dev`), open the left sidebar.
+2. Click "Open multiple trace files" (or use the multi-trace command).
+3. Load both:
+   - **trace.perfetto-trace** (from the ADB script)
+    - **build/perfetto_trace.json** (from the Ktor server)
+
+Perfetto will align them along a shared timeline (or allow visual correlation between the client's network call and the backend's Ktor: POST /messages slice).

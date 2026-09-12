@@ -1,2 +1,0 @@
-package com.codingkinetics.threadmanagement
-

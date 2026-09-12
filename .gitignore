@@ -1,15 +1,38 @@
+# Built-in build outputs & caches
+build/
+**/build/
+build
+**/build
+*.class
+
+# Gradle files & caches
+.gradle/
+**/.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# IntelliJ / JetBrains artifacts
+.idea/
+**/.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+**/*.iml
+*.iws
+*.ipr
+out/
+**/out/
+
+# Android / JVM local runtime configurations
 local.properties
+/local.properties
+.externalNativeBuild/
+**/.externalNativeBuild/
+.cxx/
+**/.cxx/
+captures/
+**/captures/
+
+# OS metadata
+.DS_Store
+**/.DS_Store
+Thumbs.db

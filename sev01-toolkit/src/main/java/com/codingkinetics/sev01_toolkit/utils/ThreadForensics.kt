@@ -18,6 +18,8 @@ import java.lang.management.ManagementFactory
 import java.lang.management.ThreadInfo
 import java.lang.management.ThreadMXBean
 import java.time.Instant
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Diagnostics & thread state inspector for concurrent labs.
@@ -118,7 +120,7 @@ object ThreadForensics {
      */
     fun dumpContendedThreads() {
         val deadlockedThreadIds = threadBean.findDeadlockedThreads()
-        if (!deadlockedThreadIds.isNullOrEmpty()) {
+        if (deadlockedThreadIds != null || deadlockedThreadIds?.size != 0) {
             System.err.println("CRITICAL: Deadlock detected across threads: ${deadlockedThreadIds.joinToString()}")
         }
 
