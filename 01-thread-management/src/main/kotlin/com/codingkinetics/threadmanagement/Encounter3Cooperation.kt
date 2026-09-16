@@ -44,19 +44,18 @@ class DisciplinedPaladinWorker(
 
         for (march in 0 until attempts) {
             // STEP 2 TODO: Un-comment this check to observe cooperative disengagement!
-            if (Thread.currentThread().isInterrupted) {
+           /* if (Thread.currentThread().isInterrupted) {
                 haltTimeNanos = System.nanoTime()
                 val elapsedMs = TimeUnit.NANOSECONDS.toMillis(haltTimeNanos - workerStartTime)
                 TelemetryVault.logForensics(
                     "Retreat horn heeded at march #$march! Breaking combat after ${elapsedMs}ms on Paladin clock."
                 )
                 return
-            }
+            }*/
 
             val current = TelemetryVault.ledger[district] ?: 0
             TelemetryVault.ledger[district] = current + 1
 
-            // Micro-burn to prevent the JIT from completing 10M loops before the OS schedules the DM
             Thread.yield()
         }
 

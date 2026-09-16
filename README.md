@@ -12,38 +12,56 @@ By the end, you should be able to move from “the app is slow” to empirical p
 
 ## The Workshop Storyline
 
-### Level 1: The Thread Crypts
+# Level 1: The Catacombs of Asynchrony
 
-The party descends into the lower vaults of the Catacombs of Asynchrony, where old JVM beasts still rule: raw threads, shared memory, blocking locks, and runaway CPU loops.
+The party descends into the lower vaults of the Catacombs of Asynchrony, where legacy JVM beasts still hold dominion: raw operating system threads, unguarded shared memory, blocking monitor locks, and runaway CPU loops.
 
-#### Quest 1: The Crypt of the Unbound Threads
+Before mastering coroutine continuations, the party must first survive the mechanical perils of raw platform concurrency across five distinct encounters.
 
-The first threat is deceptively simple: multiple worker parties raid the same treasury at once. Because they update shared state without coordination, loot disappears from the ledger.
+---
 
-Learners investigate:
+### Quest 1: The Crypt of the Unbound Threads (Encounters 1.1 – 1.3)
 
-- Race conditions on shared mutable state.
-- Why unsynchronized reads and writes lose updates.
-- Why `Thread.interrupt()` does not magically stop active CPU work.
-- How cooperative cancellation requires explicit checks.
+The first trap strikes the treasury: multiple raiding parties update the same ledger simultaneously without coordination, and retreating workers run rampant.
 
-The party earns the **Banner of Cooperation** by learning that cancellation is not force — it is a contract.
+* **Encounter 1.1: The Phantom Coin (Race Conditions)**
+* **The DM Sets the Scene:** Two worker threads raid the treasury ledger concurrently. Without synchronization barriers, interleaving read-modify-write operations drop transactions, causing silent state corruption.
+* **Learner Objective:** Audit the unsynchronized ledger and witness lost updates firsthand.
 
-#### Quest 2: Lock Contention, Un-Timed Blocks & Starvation
 
-After surviving shared-memory corruption, the party attempts to protect the treasury with locks. But unconditional locking introduces a new danger: starvation.
+* **Encounter 1.2: The Unbridled Berserker (Uncooperative Interruption)**
+* **The DM Sets the Scene:** When the retreat horn blows, the caller issues `Thread.interrupt()`. The berserker ignores the signal completely, burning 100% of a CPU core to cycle completion.
+* **Learner Objective:** Prove that `interrupt()` does not preemptively kill threads or halt tight CPU loops.
 
-A low-priority background task acquires an exclusive telemetry lock and holds it while a high-priority health probe waits helplessly behind it.
 
-Learners investigate:
+* **Encounter 1.3: The Cooperative Paladin (Cancellation Timelines)**
+* **The DM Sets the Scene:** The paladin squad enters the field with perception attuned to battlefield commands.
+* **Learner Objective:** Implement cooperative polling via `Thread.currentThread().isInterrupted` and calculate the cancellation latency delta ($\Delta t = T_{\text{halt}} - T_{\text{signal}}$).
 
-- JVM `BLOCKED`, `WAITING`, and `TIMED_WAITING` states.
-- Why thread priority does not rescue a thread blocked on a monitor or lock.
-- How unbounded critical sections exhaust thread pools.
-- Why `tryLock` with timeouts is safer for operational systems.
 
-The lesson: synchronization must have escape hatches. A lock without a timeout can become a dungeon door that never opens.
 
+> **Quest 1 Loot: The Banner of Cooperation**
+> *Passive Trait:* You know that thread cancellation on the JVM is not brute force—it is a voluntary, cooperative contract.
+
+---
+
+### Quest 2: The Starving Sentinel (Encounters 1.4 – 1.5)
+
+Having stabilized shared memory, the party fits the dungeon gates with exclusive locks. But unconditional locking introduces catastrophic gridlock.
+
+* **Encounter 1.4: The Starving Sentinel (Priority Inversion & Contention)**
+* **The DM Sets the Scene:** A slow scavenger cart (`Thread.MIN_PRIORITY`) grabs an exclusive lock to flush bulk telemetry. Moments later, an urgent alarm sentinel (`Thread.MAX_PRIORITY`) hits `lock.lock()` and stalls indefinitely.
+* **Learner Objective:** Capture thread dumps, diagnose `BLOCKED` vs `WAITING` states, and prove that thread priorities offer zero protection against lock contention.
+
+
+* **Encounter 1.5: The Ward of Timed Locks (Fail-Fast Load Shedding)**
+* **The DM Sets the Scene:** To keep the alarm sentinel alive and preserve system SLAs, the catacomb gates are re-forged with bounded escape hatches.
+* **Learner Objective:** Replace unconditional blocking with `ReentrantLock.tryLock(timeout)`, verifying that the sentinel fails fast, sheds telemetry load, and stays responsive.
+
+
+
+> **Quest 2 Loot: The Ward of Timed Locks**
+> *Passive Trait:* You understand that all production locks require escape hatches. A lock without a deadline is an outage waiting to trigger.
 ---
 
 ### Level 2: The Sanctum of Continuation

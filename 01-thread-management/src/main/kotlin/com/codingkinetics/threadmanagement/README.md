@@ -1,6 +1,8 @@
-# Level 1: The Crypt of the Unbound Threads
+# Level 1: The Crypt of Mortal Threads
 
-*The party descends into the lower vaults of the Catacombs of Asynchrony. The air smells of ozone, stale locks, and burning CPU cycles. A skittering noise echoes from the ledger vault—the Ingestion Goblins have breached the perimeter, scrambling over shared memory while the dungeon's defensive wards hang in deadlock.*
+*The party descends into the lower vaults of the Crypts of Mortal Threads. The air smells of ozone, stale locks, and burning CPU cycles. A skittering noise echoes from the ledger vault—the Ingestion Goblins have breached the perimeter, scrambling over shared memory while the dungeon's defensive wards hang in deadlock.*
+
+**The Objective:** Fetch the primary chronomancy relic.
 
 ---
 
@@ -56,7 +58,7 @@ class GoblinRaidWorker(
 
 ```
 
-Deploy two squads targeting `catacomb-gates` with 1,000 attempts each. Run `DungeonMasterService.kt` to inspect the forensic battle log:
+Deploy two squads targeting `catacomb-gates` with 1,000 attempts each. Run the `main` function to inspect the battle log:
 
 ```agsl
 [pool-1-thread-1 - TID:24] Goblin squad deployed to catacomb-gates | Ledger: {}
@@ -73,9 +75,9 @@ Why were the threads lost? Because the three operations (Read, Increment, Write)
 mutual exclusion lock, the two threads interleaved their execution, meaning that the results had been overwritten in the same 
 shared resource by different threads.
 
-`Thread.yield()` widens the race window - without synchronization, a context switch between read and write turns a microscopic concurrency gap into a rewrite race condition that happens consistently. Go ahead and remove `Thread.yield()` to see how we mean. You should see less threads lost to race conditions due to the smaller gap.
+`Thread.yield()` widens the race window - without synchronization, a context switch between read and write turns a microscopic concurrency gap into a rewrite race condition that happens consistently. Go ahead and comment out `Thread.yield()` to see how we mean. You should see less threads lost to race conditions due to the smaller gap.
 
-* **Forensic Diagnosis:** Unsynchronized read-modify-write operations fail silently. Concurrency defects rarely throw explicit exceptions - they manifest as corrupted ledger states under heavy load.
+* **The Takeaway:** Unsynchronized read-modify-write operations fail silently. Concurrency defects rarely throw explicit exceptions - they manifest as corrupted ledger states under heavy load.
 
 The battle ends just as abruptly as it begins, as many goblins try to attack, and many are also lost in the confusion of race conditions.
 
@@ -87,9 +89,18 @@ The battle ends just as abruptly as it begins, as many goblins try to attack, an
 
 Open **Encounter2InterruptFailure.kt** for the next exercise.
 
-A live beserker appears - and it looks astonishingly angry and ready to charge the party. The dungeon party must roll their dice against the Dungeon Master's to determine who runs the live demo.
+The party moves past the horde of goblins and proceeds deeper into the crypt, where it becomes wetter, darker, and a bit more jagged amongst the rocks. Finally, the party arrives at a clearing, wherein lies an atler holding an hourglass. The relic is cool to the touch, heavy with the weight of unseen seconds. As you tilt its gilded frame, the prismatic grains inside cascade in 
+reverse, emitting a faint chiming sound like shattered glass settling back together.
 
-The panicked [lowest roller] attempts to cast a Banishment ward (`.interrupt()`) on an over-provisioned worker burning CPU cycles in an unbroken combat loop:
+**Instructions**
+The team should roll dice on who retrieves the relic.
+
+As the party makes its way back, a live beserker appears - and it looks astonishingly angry, and ready to charge the whole party. The dungeon party must roll their dice against the Dungeon Master's to determine who runs the live demo. 
+
+**Instructions**
+The team is put up to battle. Everyone rolls the dice, and the lowest roller must go up to the front of the room to display their screen and run the exercise. Lowest roller will be the player to attempt a distraction and a stop to the angry Beserker.
+
+The panicked player attempts to cast a Banishment ward (`.interrupt()`) on an over-provisioned worker burning CPU cycles in an unbroken combat loop:
 
 ```kotlin
 class BerserkerChargeTask(private val district: String, private val strikes: Int) : Runnable {
@@ -126,21 +137,12 @@ Player issues `berserkerThread.interrupt()` after 50ms - go ahead an uncomment a
 
 ```
 
-* **Forensic Diagnosis:** Calling `.interrupt()` simply toggles an internal JVM boolean flag. It never throws `InterruptedException` unless the target thread is actively resting within explicit blocking states (`Thread.sleep()`, `Object.wait()`). A thread spinning in pure computation is completely deaf to outside interrupts.
-* **Challenge:** Players, can you think of a way to interrupt a thread that's actively running? 
+It appears that the Berserker laughed off the player's attempt to stop it, seized the core right back, and makes a charge at the crew. 
 
----
+*Players should roll dice against the DM to assess damage.*
 
-That makes complete sense. Thread concurrency is fundamentally about **time dilation**—threads operate on completely asynchronous, independent clocks controlled by the OS scheduler, not synchronous line-by-line script time.
-
-By capturing high-resolution timestamps (`System.nanoTime()` or `System.currentTimeMillis()`) at:
-
-1. When the retreat horn is blown by the DM thread ($T_{\text{signal}}$), and
-2. When the Paladin thread actually checks its flag and drops out ($T_{\text{halt}}$),
-
-attendees can calculate the **Cancellation Latency Delta** ($\Delta t$) and see firsthand how long a thread lives on its own timeline after being told to die.
-
-Here is the updated **Encounter 1.3** featuring the timing instrumentation:
+* **The Takeaway:** Calling `.interrupt()` or `yield()` simply toggles an internal JVM boolean flag. It never throws `InterruptedException` unless the target thread is actively resting within explicit blocking states (`Thread.sleep()`, `Object.wait()`). A thread spinning in pure computation is completely deaf to outside interrupts.
+* **Challenge:** Can you think of a way to interrupt a thread that's actively running? 
 
 ---
 
@@ -148,11 +150,11 @@ Here is the updated **Encounter 1.3** featuring the timing instrumentation:
 
 *Format: Hands-On Lab (15 min)*
 
-The retreat has sounded, but uncooperative threads refuse to die. In Encounter 1.2, you witnessed the Berserker ignore your banishment ward and burn 100% of a CPU core until its loop finished.
+A retreat is made, but the chaos from uncooperative threads refuse to die. In Encounter 1.2, you witnessed the Berserker ignore your banishment ward and burn CPU core until its loop had finished.
 
 Now, the party needs to evacuate the dungeon. Threads do not share a synchronized master clock; each operates on its own OS timeline. If a worker fails to check the battlefield state, it runs wild on its own schedule, keeping the JVM alive and wasting CPU cycles long after the caller has abandoned the result.
 
-To survive, your workers must possess **battlefield perception**.
+To survive, your workers must possess **battlefield perception** with the help of the chronomaster's skills to manage time.
 
 ---
 
@@ -174,14 +176,14 @@ class DisciplinedPaladinWorker(
         
         for (march in 0 until attempts) {
             // STEP 2 TODO: Add the cooperative perception check with timestamping
-            if (Thread.currentThread().isInterrupted) {
+            /*if (Thread.currentThread().isInterrupted) {
                 val haltTime = System.currentTimeMillis()
                 val elapsedSinceStart = haltTime - startTime
                 TelemetryVault.logForensics(
                     "Retreat horn heeded at march #$march! Halting after ${elapsedSinceStart}ms on Paladin timeline."
                 )
-                return // Surrender the thread immediately
-            }
+                return
+            }*/
 
             val current = TelemetryVault.ledger[district] ?: 0
             TelemetryVault.ledger[district] = current + 1
@@ -222,7 +224,7 @@ class DisciplinedPaladinWorker(
 
 1. Un-comment the cooperative interrupt check and timing logs.
 2. Re-run `main()`.
-3. Measure the **Cancellation Latency Delta** ($\Delta t = T_{\text{halt}} - T_{\text{signal}}$):
+3. Measure the **Cancellation Latency Difference** ($\Delta t = T_{\text{when it actually stops}} - T_{\text{cancellation signal emits}}$):
 
 ```agsl
 [main          | T+14ms] >>> DM SOUNDS RETREAT: Calling paladin.interrupt() <<<
@@ -238,7 +240,7 @@ class DisciplinedPaladinWorker(
 
 ---
 
-#### The Forensic Takeaway: Why Timelines Matter
+#### The Takeaway: Why Timelines Matter
 
 * **Threads are not synchronized steps:** Calling `.interrupt()` on Thread A from Thread B does not stop Thread A at that exact timestamp. It merely raises a flag on Thread A's independent timeline.
 * **Latency Delta ($\Delta t$):** The time between when you ask work to stop and when the thread actually stops is your **cancellation latency**. Without cooperative checks, $\Delta t$ equals the entire remaining duration of the task.

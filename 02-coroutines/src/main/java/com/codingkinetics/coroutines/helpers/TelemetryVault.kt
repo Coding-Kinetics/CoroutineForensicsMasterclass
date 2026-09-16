@@ -1,4 +1,4 @@
-package com.codingkinetics.threadmanagement.helpers
+package com.codingkinetics.coroutines.helpers
 
 import com.codingkinetics.sev01_toolkit.utils.ThreadForensics
 import java.util.concurrent.TimeUnit

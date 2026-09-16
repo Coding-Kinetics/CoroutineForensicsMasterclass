@@ -2,7 +2,7 @@
 
 The party reaches the deepest vault of the Catacombs, where the stone arches crack open to reveal something far more terrifying than goblins or liches: a humming, cold-lit terminal in a modern operations room. The fantasy collapses into the waking nightmare of every engineer.
 
-The dungeon master's screen is replaced by a PagerDuty siren. The goblin hordes were never an abstraction; they were thousands of unbuffered concurrent client webhooks pounding the production cluster. The Lich wasn't cast in folklore; it was an unconfined coroutine leak bleeding CPU cycles across worker pools until the JVM collapsed.
+The dungeon master's screen is replaced by a PagerDuty siren. The goblin hordes were never an abstraction; they were thousands of unbuffered concurrent client webhooks pounding the production cluster. Your campaign wasn't cast in folklore; it was an unconfined coroutine leak bleeding CPU cycles across worker pools until the JVM collapsed.
 
 A production incident is underway for a full-stack Ktor chat. Your mission is to stand up the observability pipeline, generate traffic, inspect live dashboard metrics, and isolate the bottleneck. Hundreds of customers are reporting the issue.
 
@@ -33,12 +33,13 @@ Follow the setup and incident triage instructions located directly in the challe
 
 ### 3. The Mission:
 
-- Spin up the diagnostic scrying array (Prometheus + Grafana).
+- Spin up the diagnostic scrying array (Prometheus + Grafana) using [Ftrace.kt] and [FTracePlugin.kt] provided under /perfetto.
 - Synthesize Perfetto traces and live JVM thread metrics under synthetic load.
 - Locate the offending coroutine leak or blocked dispatcher in the Ktor routing pipeline.
 - Ship the patch, stabilize the cluster, and clear the queue before memory limits force an OOM crash.
 
 ### Party Roles - Specialization Check
+First, group together to set up your observability stack. Then, take on rolls to figure out what's wrong.
 
 - **The Paladin** (Platform Architect / Lead): Coordinates triage order, manages communication lines, and confirms root-cause verification before approving rollback or deployment.
 - **The Diviner** (Telemetry Specialist): Reads Grafana dashboard runes, correlates dispatcher queue depth against thread pool exhaustion, and maps the timeline of the spike.

@@ -16,5 +16,17 @@ kotlin {
 
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
+    implementation(project(":sev01-toolkit"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-debug:1.8.1")
+}
+
+tasks.withType<JavaExec>().configureEach {
+    // Enables the coroutine debugger agent & names across runs
+    jvmArgs("-Dkotlinx.coroutines.debug")
+    standardInput = System.`in`
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    jvmArgs("-Dkotlinx.coroutines.debug")
 }

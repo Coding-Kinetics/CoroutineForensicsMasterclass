@@ -27,7 +27,7 @@ import com.codingkinetics.threadmanagement.helpers.TelemetryVault
  * CAMPAIGN ROLE: Player Trial Battlefield (Encounter 1A & Encounter 1C)
  *
  * INSTRUCTIONS:
- * - Lab 1A: Inspect [GoblinRaidWorker]. Notice the yield between read and write causing silent lost updates.
+ * - Lab 1A: Inspect [GoblinRaidWorker]. Observe how yield between read and write causes silent lost updates.
  * - Lab 1C: Implement [DisciplinedPaladinWorker]. Add the cooperative check to halt immediately when interrupted.
  */
 

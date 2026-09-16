@@ -1,6 +1,6 @@
 # Lab 04 BOSS: The Chronomancer’s Split Crucible (A Tale of Two Halves)
 
-Up until now, you have fought in isolated training chambers—probing standalone coroutines and single-threaded test harnesses. That era is over.
+Up until now, you have fought in isolated dungeon chambers. That era is over.
 
 Before you stands the gateway to the actual production citadel: the full-stack Ktor Chat monorepo. This is a live multiplatform beast with an Android client, a concurrent Ktor server, shared common modules, and multiple interacting thread pools. You cannot tackle the Sev01 Final Boss at 3:00 AM without first learning how to navigate this larger codebase and seeing across the wire.
 
@@ -43,9 +43,7 @@ record_android_trace -o /tmp/android_client.pftrace -t 10s -b 64mb am binder_dri
 - Once your trace loads in [ui.perfetto.dev](https://ui.perfetto.dev) or Android Studio Profiler, answer the following questions in the section below.
 
 #### Deliverable:
-- A `.pftrace` / exported `.json` highlighting a suspicious frame drop or heap growth curve.
-
-
+- A `.pftrace` / exported `.json` highlighting a suspicious frame drop or heap growth curve and loaded on perfetto.
 
 - **Frame Budget Breaches:** Look at the Choreographer#doFrame slice track. Are you seeing slices stretching well past the 16.6ms (60Hz) or 8.3ms (120Hz) mark? What work is active on the Main/UI thread during that elongated frame—is it heavy layout/recomposition or JSON deserialization?
 - **GC Suspension Pressure**: Search the trace slices for dalvik.vm.gc or garbage collector. How often is the runtime calling a "Stop the World" pause? Are allocations climbing in a sawtooth pattern that never returns to baseline after a manual GC trigger?
@@ -119,3 +117,15 @@ Instead of inspecting the app and the server in two different browser tabs, atte
     - **build/perfetto_trace.json** (from the Ktor server)
 
 Perfetto will align them along a shared timeline (or allow visual correlation between the client's network call and the backend's Ktor: POST /messages slice).
+
+### Acknowledgments & Upstream Attribution
+
+*This project is forked and adapted from the [ktor-chat](https://github.com/ktorio/ktor-chat) sample repository by **JetBrains** and the **Ktor team**.*
+
+*Special thanks and credit to the original contributors for providing the foundational architecture:*
+
+* **Bruce Hamilton** ([@bjhham](https://github.com/bjhham)) — JetBrains
+* **Aleksei Tirman** ([@Stexxe](https://github.com/Stexxe)) — JetBrains
+* **Oleh Pantus** ([@zibet27](https://github.com/zibet27))
+* **Osip Fatkullin** ([@osipxd](https://github.com/osipxd)) — JetBrains
+* **Thomas Horatio** ([@horatiothomas](https://www.google.com/search?q=https://github.com/horatiothomas))
