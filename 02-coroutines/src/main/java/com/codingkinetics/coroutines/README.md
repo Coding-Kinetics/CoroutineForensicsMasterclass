@@ -12,11 +12,11 @@
 
 In this trial, you replace heavy platform threads with lightweight coroutines. You will discover that while coroutines solve thread exhaustion, concurrency bugs do not vanish automatically—race conditions still strike unsynchronized memory, uncooperative loops still defy cancellation, and uncaught exceptions shatter parent scopes.
 
-To navigate this astral layer, your party has been outfitted with a new diagnostic artifact: the **Coroutines Debugger**.
+To navigate this rematch, your party has been outfitted with a new diagnostic artifact: the **Coroutines Debugger**.
 
 Unlike OS thread monitors that only see raw operating system workers, the debugger hooks directly into the continuation runtime. It allows you to peer past the physical worker threads, inspect coroutine creation stack traces, track state transitions across suspension points, and see exactly which coroutines are actively running, suspended, or blocked waiting on a child job.
 
-conquer the rematch and claim the Slate, your party must complete five tactical encounters:
+To conquer the rematch and claim the Slate, your party must complete five tactical encounters:
 
 ```
 [Encounter 2.1: Lab]             [Encounter 2.2: Demo]            [Encounter 2.3: Lab]
@@ -24,9 +24,9 @@ The Swarm Rematch        --->   The Berserker's Pacification ---> The Paladin's 
 (10k Coroutines Race)           (Suspending yield() Works)       (Structured job.cancel())
                                                                             |
                                                                             v
-                                 [Encounter 2.5: Lab]             [Encounter 2.4: Lab]
-                                 The Shattered Mirror     <---   The Sentinel's Deadline
-                                 (SupervisorJob Isolation)        (withTimeoutOrNull Shedding)
+                                                                    [Encounter 2.5: Lab]
+                                                                   The Shattered Mirror
+                                                                 (SupervisorJob Isolation) 
 
 ```
 
@@ -52,9 +52,9 @@ Before running the exercises, record your predictions:
 
 ### Encounter 2.1: The Swarm Rematch (10,000 Astral Goblins)
 
-*Format: Hands-On Lab (10 min)*
+*Format: Hands-On Lab (15 min)*
 
-*File: `Encounter21GoblinRematch.kt*`
+**File:** `Encounter21GoblinRematch.kt*`
 
 In Level 1, launching just 2,000 OS threads threatened to exhaust JVM memory. Coroutines are featherweight: you can summon tens of thousands across a handful of shared pool workers (`Dispatchers.Default`).
 
@@ -273,21 +273,20 @@ Both approaches eliminate race conditions, but their runtime profiles, allocatio
 #### 3. Coarse-Grained Thread Confinement: `launch(confinedDispatcher)`
 
 * **Under the hood:** The entire coroutine runs on the single-thread dispatcher from start to finish.
-* **Throughput:** State mutations become raw, in-memory CPU operations (identical to single-threaded code). No locks, no atomic CAS, and no thread hops.
 * **Limitation:** Cannot be used if the coroutine performs blocking I/O or heavy computation that would starve other tasks sharing that single dispatcher thread.
-* **Choose Coarse-Grained Confinement** (actor-style or a single-threaded queue) when handling **high-frequency, high-throughput mutations** (e.g., database transaction staging, telemetry accumulation, event loops).
+* **Choose Coarse-Grained Confinement**: actor-style or a single-threaded queue) when handling **high-frequency, high-throughput mutations** i.e., database transaction staging, telemetry accumulation, event loops.
 
 ---
 
 ### Encounter 2.2: The Berserker's Pacification (Suspending `yield`)
 
-*Format: Live Demo (10 min)*
+*Format:  Hands-On Lab*
 
-*File: `Encounter22BerserkerPacification.kt*`
+**File:** `Encounter22BerserkerPacification.kt*`
 
 The Raging Berserker returns. In Encounter 1.2, you watched him laugh off `Thread.yield()` and `thread.interrupt()`, burning 100% of a CPU core to completion because polite scheduler hints don't halt a running JVM thread.
 
-This time, the Berserker’s combat loop is rewritten as a suspending coroutine. The lowest-rolling player steps to the front to cast the banishment ward (`job.cancel()`):
+This time, the Berserker’s combat loop is rewritten as a suspending coroutine. Cast the banishment ward (`job.cancel()`):
 
 ```kotlin
 fun CoroutineScope.launchBerserker(district: String, strikes: Int): Job = launch(Dispatchers.Default) {
@@ -310,7 +309,13 @@ fun CoroutineScope.launchBerserker(district: String, strikes: Int): Job = launch
 
 ```
 
-Run `main()`. The DM issues `berserkerJob.cancel()` after 20ms:
+**Why do we need both `yield()` and `job.cancel()`?**
+
+* **yield acts as a tripwire**: Under the hood, `yield()` unparks the thread to the dispatcher so other coroutines get a chance to run. It provides coroutine a pause that allows it to check for cancellation signals, if any are present. 
+* If you only have yield() but never call job.cancel(), the loop yields to other coroutines but happily runs all strikes to completion. 
+* If you only call job.cancel() but remove yield() from the loop, the Berserker is running pure un-suspending CPU work. It stays blind to the cancellation signal and burns the core to the end.
+
+Run `main()`. 
 
 ```agsl
 [DefaultDispatcher-worker-1 @coroutine#2] Berserker frenzy commenced in catacomb-gates
@@ -361,7 +366,7 @@ suspend fun executePatrol(district: String, marches: Int) = coroutineScope {
 
 ```
 
-2. In `main()`, trigger the patrol inside a cancellable child job, issue `job.cancelAndJoin()`, and measure the cancellation latency:
+2. In `main()`, trigger the patrol inside a cancellable child job, issue `job.cancelAndJoin()`, and measure the cancellation time difference:
 
 ```agsl
 >>> [DM Timeline: T+2ms] SOUNDING RETREAT: Calling patrolJob.cancelAndJoin() <<<
@@ -379,54 +384,7 @@ Cancellation Latency:    1ms (Deterministic structured cleanup)
 
 ---
 
-### Encounter 2.4: The Sentinel's Deadline (`withTimeoutOrNull`)
-
-*Format: Hands-On Player Remediation (10 min)*
-
-*File: `Encounter24SentinelDeadline.kt*`
-
-In Encounter 1.4 and 1.5, the Catacomb Sentinel nearly died of starvation behind the Scavenger cart, forcing you to write boilerplate `tryLock(200, TimeUnit.MILLISECONDS)` blocks around an OS `ReentrantLock`.
-
-In the Astral Rematch, we replace OS thread-blocking locks with **suspending timeouts**.
-
-#### Player Action: Enforce the Declarative Deadline
-
-1. Inspect the Sentinel's gate ingestion. Replace manual lock polling with `withTimeoutOrNull`:
-
-```kotlin
-suspend fun flushWithDeadline(batch: IngestionBatch, deadlineMs: Long): Boolean {
-    // Declarative bounded ward: sheds load without blocking underlying OS threads
-    val completed = withTimeoutOrNull(deadlineMs) {
-        processBatch(batch)
-        true
-    }
-
-    if (completed == null) {
-        TelemetryVault.log("SHED LOAD: ${batch.source} exceeded ${deadlineMs}ms deadline. Dropping payload to protect SLA.")
-        return false
-    }
-
-    return true
-}
-
-```
-
-2. Run `main()` and inspect the telemetry:
-
-```agsl
-[DefaultDispatcher-worker-1 @coroutine#2] LOCKED: Scavenger hauling salvage-cart (4000ms)
-[DefaultDispatcher-worker-2 @coroutine#3] URGENT: Sentinel requesting gate access (deadline: 200ms)
-[DefaultDispatcher-worker-2 @coroutine#3] SHED LOAD: sentinel-alarm exceeded 200ms deadline. Dropping payload to protect SLA.
-[DefaultDispatcher-worker-1 @coroutine#2] UNLOCKED: Completed salvage-cart
-[FORENSIC RESULT] Sentinel failed fast in 200ms without parking an OS thread. SLA preserved!
-
-```
-
-* **The Takeaway:** `withTimeoutOrNull` transforms complex, error-prone lock timeouts into a clean, declarative wrapper. Under the hood, it schedules a delay-based cancellation that fires without parking or starving physical worker threads.
-
----
-
-### Encounter 2.5: The Shattered Mirror (Blast Radius, `SupervisorJob`, & CEH)
+### Encounter 2.4: The Shattered Mirror (Blast Radius, `SupervisorJob`, & CEH)
 
 *Format: Hands-On Lab (15 min)*
 

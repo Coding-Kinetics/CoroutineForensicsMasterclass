@@ -32,7 +32,7 @@ import kotlinx.coroutines.yield
  * - Structured cancellation mechanics using [coroutineScope] and child [Job] hierarchies
  * - Cooperative loop inspection using zero-allocation [ensureActive] vs suspending [yield]
  * - Deterministic, non-leaking squad disengagement via [cancelAndJoin]
- * - Measuring cancellation latency and confirming resource cleanup guarantees
+ * - Measuring cancellation time difference and confirming resource cleanup guarantees
  *
  * CAMPAIGN ROLE: Player Trial Battlefield (Encounter 2.3: The Paladin's Transmutation)
  *

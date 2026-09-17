@@ -243,7 +243,7 @@ class DisciplinedPaladinWorker(
 #### The Takeaway: Why Timelines Matter
 
 * **Threads are not synchronized steps:** Calling `.interrupt()` on Thread A from Thread B does not stop Thread A at that exact timestamp. It merely raises a flag on Thread A's independent timeline.
-* **Latency Delta ($\Delta t$):** The time between when you ask work to stop and when the thread actually stops is your **cancellation latency**. Without cooperative checks, $\Delta t$ equals the entire remaining duration of the task.
+* **Time Delta ($\Delta t$):** The time between when you ask work to stop and when the thread actually stops is your **cancellation latency**. Without cooperative checks, $\Delta t$ equals the entire remaining duration of the task.
 * **Bridge to Level 2 (Coroutines):** In Level 2, when you issue `job.cancel()`, you will measure this exact same delta. If your coroutine lacks cooperative suspension points, its timeline will similarly drift and burn dispatcher cycles long after the parent scope has died.
 ---
 
@@ -291,7 +291,7 @@ Call Stack:
 
 ```
 
-* **Forensic Diagnosis:** **Priority Inversion & Thread Starvation.** Despite running at `MAX_PRIORITY` (10), the Sentinel was parked in a `WAITING` state on the OS runqueue for 4,000ms. Unbounded synchronization introduces cascading SLA violations under high contention.
+* **The takeaway:** **Priority Inversion & Thread Starvation.** Despite running at `MAX_PRIORITY` (10), the Sentinel was parked in a `WAITING` state on the OS runqueue for 4,000ms. Unbounded synchronization introduces cascading SLA violations under high contention.
 
 ---
 
@@ -349,7 +349,7 @@ Instead of waiting 4,000ms, the Sentinel gives up after exactly 200ms, sheds the
 
 ```
 
-* **Forensic Diagnosis:** **Deterministic Bounded Waiting.** By bounding lock acquisition with timeouts, the system sheds load proactively under Sev-0 pressure rather than collapsing into thread pool exhaustion.
+* **The Takeaway:** *Deterministic Bounded Waiting.* By bounding lock acquisition with timeouts, the system sheds load proactively under Sev-0 pressure rather than collapsing into thread pool exhaustion.
 
 ---
 

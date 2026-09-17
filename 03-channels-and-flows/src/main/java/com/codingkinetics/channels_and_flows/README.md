@@ -2,7 +2,7 @@
 
 *The party descends into the Subterranean Aqueduct, where pressurized conduits surge with high-throughput streams of combat telemetry. The stone floor vibrates under the roar of untamed data. By your side rests the Cartographer’s Slate, humming with shifting runes that simulate an infinite army of concurrent dungeon permutations.*
 
-**The Objective:** Stabilize the Fortress Alert Conduit and survive the trial of randomized combat loads using Property-Based Testing.
+**The Objective:** Stabilize the Fortress Alert Siren and survive the trial of randomized combat loads using Property-Based Testing.
 
 ---
 
@@ -27,11 +27,11 @@ The Siren's Mailbox        --->   The Slate of Infinite Mimics  --->  The Resili
 
 *Format: Hands-On Lab (15 min)*
 
-Open **Encounter31SharedFlowFreeze.kt**.
+*File: `Encounter31SharedFlowFreeze.kt`*
 
 The party wires up a centralized alarm bell—a `MutableSharedFlow<CombatAlert>`—to broadcast perimeter alerts across two companions:
 
-1. **The Rogue (Fast Scout):** Needs real-time alerts immediately to dodge incoming hazards.
+1. **The Rogue (Fast Scout):** Needs real-time alerts immediately to dodge incoming hazards (0ms).
 2. **The Cleric (Slow Tank):** Heavily armored; each alert requires 500ms of ritual prayer before he can heed the next.
 
 ```kotlin
@@ -40,7 +40,6 @@ sealed interface CombatAlert {
 }
 
 object FortressBroadcaster {
-    // THE NAIVE CONTRACT:
     // Defaults: replay = 0, extraBufferCapacity = 0, onBufferOverflow = BufferOverflow.SUSPEND
     val alerts = MutableSharedFlow<CombatAlert>()
 }
@@ -122,7 +121,9 @@ Because `MutableSharedFlow()` defaults to `extraBufferCapacity = 0` and `onBuffe
 
 *Format: Property Testing Lab (15 min)*
 
-Manual tests with static, hardcoded delays often mask concurrency bugs. The party places the **Cartographer’s Slate** upon the altar to subject the broadcaster to an infinite variety of randomized combat conditions using Property-Based Testing.
+*File: `SharedFlowPropertyTest.kt*`
+
+Manual tests with static, hardcoded delays often mask concurrency bugs. The party places the **Cartographer’s Slate** upon the altar to subject the broadcaster to an infinite variety of randomized combat conditions using Property-Based Testing inside a standard JUnit 5 test harness.
 
 #### The Architectural Invariant
 
@@ -132,83 +133,99 @@ Manual tests with static, hardcoded delays often mask concurrency bugs. The part
 Open **SharedFlowPropertyTest.kt**:
 
 ```kotlin
-class SharedFlowPropertyTest : FunSpec({
+class SharedFlowPropertyTest {
 
-    test("PROPERTY: Fast consumer delivery must be decoupled from slow consumer latency") {
-        val dispatcher = StandardTestDispatcher()
+    @Test
+    fun `PROPERTY - fast subscriber delivery must be independent of slow subscriber latency`() = runTest {
+        val random = Random(seed = 42) // Fixed seed for reproducible failure traces
 
-        // GENERATORS: Generate random alert batches (2..20 items) and slow delays (50..300ms)
-        val alertBatchArb = Arb.list(Arb.string(5..10), 2..20)
-        val slowDelayArb = Arb.int(50, 300)
+        // Run 50 randomized iterations (simulating the Cartographer's Slate)
+        repeat(50) { iteration ->
+            // SUT: The naive shared flow under audit (defaults: extraBufferCapacity = 0, onBufferOverflow = SUSPEND)
+            val broadcaster = MutableSharedFlow<String>()
 
-        checkAll(alertBatchArb, slowDelayArb) { alerts, slowDelayMs ->
-            runTest(dispatcher) {
-                // SUT: Naive shared flow under audit
-                val broadcaster = MutableSharedFlow<String>()
+            // GENERATORS: Generate arbitrary load
+            val alertCount = random.nextInt(from = 2, until = 20)
+            val slowDelayMs = random.nextLong(from = 50L, until = 300L)
+            val generatedAlerts = List(alertCount) { index -> "ALERT_SECTOR_${iteration}_$index" }
 
-                val fastReceived = mutableListOf<String>()
+            val fastCollectorReceived = mutableListOf<String>()
 
-                // Fast Collector: receives instantly (0 virtual ms)
-                val fastJob = launch {
-                    broadcaster.collect { fastReceived.add(it) }
+            // 1. FAST COLLECTOR (Rogue): Takes 0ms to handle alerts
+            val fastJob = launch {
+                broadcaster.collect { alert ->
+                    fastCollectorReceived.add(alert)
                 }
-
-                // Slow Collector: simulates heavy work on each item
-                val slowJob = launch {
-                    broadcaster.collect {
-                        delay(slowDelayMs.toLong())
-                    }
-                }
-
-                advanceUntilIdle() // Ensure subscribers are attuned
-
-                // Producer: fires all generated alerts
-                val emitJob = launch {
-                    for (alert in alerts) {
-                        broadcaster.emit(alert)
-                    }
-                }
-
-                // Advance virtual time strictly enough for the producer to complete
-                advanceUntilIdle()
-
-                // VERIFICATION: Fast collector must have received every alert!
-                fastReceived.size shouldBe alerts.size
-
-                fastJob.cancel()
-                slowJob.cancel()
-                emitJob.cancel()
             }
+
+            // 2. SLOW COLLECTOR (Cleric): Takes slowDelayMs per alert
+            val slowJob = launch {
+                broadcaster.collect {
+                    delay(slowDelayMs)
+                }
+            }
+
+            // Allow collectors to establish their subscriptions
+            advanceUntilIdle()
+
+            // 3. PRODUCER: Emits all generated alerts in sequence
+            val emitJob = launch {
+                for (alert in generatedAlerts) {
+                    broadcaster.emit(alert)
+                }
+            }
+
+            advanceUntilIdle()
+
+            // INVARIANT CHECK:
+            assertEquals(
+                generatedAlerts.size,
+                fastCollectorReceived.size,
+                """
+                [INVARIANT SHATTERED at iteration $iteration]
+                Generated alert count: $alertCount
+                Slow subscriber latency: ${slowDelayMs}ms
+                Fast subscriber received: ${fastCollectorReceived.size}
+                
+                CAUSE: Default MutableSharedFlow() suspended emitter on Alert #2 waiting for the slow collector,
+                starving the fast collector of real-time alerts!
+                """.trimIndent()
+            )
+
+            fastJob.cancel()
+            slowJob.cancel()
+            emitJob.cancel()
         }
     }
-})
+}
 
 ```
 
-Run the test suite. Notice how the Kotest engine hammers the broadcaster with dynamic batches:
+Run the test suite via the IntelliJ gutter icon. The Slate reports a shattered invariant on iteration 0:
 
 ```agsl
-Property failed after 1 attempts!
-  Input 1: ["ALERT_A", "ALERT_B"]
-  Input 2: 50 (slowDelayMs)
+org.opentest4j.AssertionFailedError: 
+[INVARIANT SHATTERED at iteration 0]
+Generated alert count: 14
+Slow subscriber latency: 182ms
+Fast subscriber received: 1
 
-Expected: 2
-Actual: 1
-
-Kotest Property Assertion Failed:
-At virtual time T=0ms, Alert #1 was emitted.
-When the producer attempted to emit Alert #2, it SUSPENDED because the slow collector
-had not completed its 50ms delay, stalling delivery to the fast collector.
+CAUSE: Default MutableSharedFlow() suspended emitter on Alert #2 waiting for the slow collector,
+starving the fast collector of real-time alerts!
+Expected :14
+Actual   :1
 
 ```
 
-* **Forensic Diagnosis:** The Property-Based Test automatically found the minimum shrinking counter-example: any emission sequence of $\ge 2$ items stalls when paired with a subscriber whose delay is $> 0\text{ms}$.
+* **The Takeaway:** The Slate isolated the minimal failing condition: any burst of $\ge 2$ items stalls delivery to the fast subscriber whenever a peer subscriber is suspended.
 
 ---
 
 ### Encounter 3.3: The Resilient Conduit (Forging Buffer Policies)
 
 *Format: Hands-On Remediation (10 min)*
+
+*File: `FortressBroadcaster.kt`*
 
 The party must reinforce the broadcaster to satisfy the invariant across every permutation generated by the Cartographer's Slate.
 
@@ -228,6 +245,17 @@ object FortressBroadcaster {
 
 ```
 
+**Why Are We Doing This?**
+By default, `MutableSharedFlow` has a buffer capacity of $0$. That means it operates strictly on a rendezvous model: when `emit()` is called, the emitter is forbidden from returning until every single active subscriber has completed its intake loop.
+
+1. **Decoupling Producer from Consumer Cadence:** Setting `extraBufferCapacity = 64` creates an asynchronous staging queue inside the shared flow. When bursts of alerts arrive, emit() simply enqueues the item into this shared buffer and resumes immediately (~0ms). It no longer waits on downstream coroutines to finish their work.
+
+2. **Isolating Fast Subscribers from Slow Peers:** Because the buffer holds pending items for the lagging Cleric, the emitter never suspends during bursts. This allows the fast-moving Rogue to continuously pull alerts off the stream in real time without being tethered to the Cleric's 500ms prayer ritual.
+
+3. **Why `replay = 0`?** `replay` governs how many historical items are immediately dispatched to brand-new subscribers who join late. We want live telemetry, not replayed historical noise when new party members connect.
+
+4. **Why `BufferOverflow.SUSPEND?`** We want zero data loss. As long as the burst remains under 64 items, emissions are completely non-blocking. If a catastrophic disaster produces more than 64 unhandled items, the emitter gracefully applies backpressure by suspending rather than silently discarding alerts.
+
 Update `SharedFlowPropertyTest.kt` with matching capacity:
 
 ```kotlin
@@ -242,7 +270,8 @@ val broadcaster = MutableSharedFlow<String>(
 Re-run the test suite and verify the outcome:
 
 ```agsl
-100 tests passed. Invariant verified across 100 randomized combat loads!
+BUILD SUCCESSFUL in 412ms
+50 tests passed. Invariant verified across 50 randomized combat loads!
 [FORENSIC RESULT] Fast collectors received 100% of alerts under all permutations.
 
 ```

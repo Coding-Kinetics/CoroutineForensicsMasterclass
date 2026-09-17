@@ -18,11 +18,12 @@ dependencies {
     // Project dependencies
     implementation(project(":sev01-toolkit"))
 
-    // Kotlin Coroutines Core & Debugger Agent
     implementation(libs.kotlinx.coroutines.core)
-    //  implementation(libs.kotlinx.coroutines.debug)
-    testImplementation(libs.kotlinx.coroutines.test)
 
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<JavaExec>().configureEach {
